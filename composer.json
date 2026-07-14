@@ -1,18 +1,43 @@
 {
     "name": "palgoal/media-library",
-    "description": "Standalone reusable media library (upload, browse, picker) extracted from PalgooalWeb. Model + Controller + Migration + Routes + Views + JS, ready to drop into any Laravel 10/11/12 project.",
+    "description": "Standalone Laravel media library package (upload, browse, single/multiple picker). Model + Controller + Migration + Routes + Views + JS, ready to drop into any Laravel 10/11/12 project.",
     "type": "library",
     "license": "MIT",
-    "keywords": ["laravel", "media", "media-library", "uploader", "file-manager"],
+    "keywords": ["laravel", "media", "media-library", "uploader", "file-manager", "media-picker"],
+    "homepage": "https://github.com/palgooal/Palgoal-Laravel-Media-Library",
+    "support": {
+        "issues": "https://github.com/palgooal/Palgoal-Laravel-Media-Library/issues",
+        "source": "https://github.com/palgooal/Palgoal-Laravel-Media-Library"
+    },
+    "authors": [
+        {
+            "name": "Palgoal"
+        }
+    ],
     "require": {
         "php": "^8.1",
-        "illuminate/support": "^10.0|^11.0|^12.0",
+        "illuminate/auth": "^10.0|^11.0|^12.0",
+        "illuminate/contracts": "^10.0|^11.0|^12.0",
         "illuminate/database": "^10.0|^11.0|^12.0",
-        "illuminate/http": "^10.0|^11.0|^12.0"
+        "illuminate/filesystem": "^10.0|^11.0|^12.0",
+        "illuminate/http": "^10.0|^11.0|^12.0",
+        "illuminate/routing": "^10.0|^11.0|^12.0",
+        "illuminate/support": "^10.0|^11.0|^12.0",
+        "illuminate/validation": "^10.0|^11.0|^12.0"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^8.0|^9.0|^10.0",
+        "phpunit/phpunit": "^10.5|^11.0",
+        "laravel/pint": "^1.13"
     },
     "autoload": {
         "psr-4": {
             "Palgoal\\MediaLibrary\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Palgoal\\MediaLibrary\\Tests\\": "tests/"
         }
     },
     "extra": {
@@ -22,7 +47,14 @@
             ]
         }
     },
+    "scripts": {
+        "test": "vendor/bin/phpunit",
+        "test-coverage": "vendor/bin/phpunit --coverage-html coverage",
+        "format": "vendor/bin/pint",
+        "format-test": "vendor/bin/pint --test"
+    },
     "minimum-stability": "stable",
+    "prefer-stable": true,
     "config": {
         "sort-packages": true
     }

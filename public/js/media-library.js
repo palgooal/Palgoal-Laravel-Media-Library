@@ -246,19 +246,23 @@ document.addEventListener('DOMContentLoaded', () => {
             openBtn.className = 'absolute inset-0 w-full h-full focus:outline-none';
             openBtn.setAttribute('aria-label', `فتح تفاصيل ${name}`);
 
+            // Built via DOM APIs (not innerHTML) so that a malicious
+            // file_original_name / file_extension value can never be
+            // interpreted as HTML (stored XSS prevention).
             if (isImage) {
-                openBtn.innerHTML = `
-                    <img src="${imageUrl}" alt="${name}"
-                        class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200 pointer-events-none">
-                `;
+                const img = document.createElement('img');
+                img.src = imageUrl;
+                img.alt = name;
+                img.className = 'w-full h-full object-cover group-hover:scale-105 transition-transform duration-200 pointer-events-none';
+                openBtn.appendChild(img);
             } else {
-                openBtn.innerHTML = `
-                    <div class="w-full h-full flex items-center justify-center pointer-events-none">
-                        <span class="px-2 py-1 rounded bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-[11px] text-gray-500 dark:text-gray-300">
-                            ${(item.file_extension || '').toUpperCase() || 'FILE'}
-                        </span>
-                    </div>
-                `;
+                const wrap = document.createElement('div');
+                wrap.className = 'w-full h-full flex items-center justify-center pointer-events-none';
+                const badge = document.createElement('span');
+                badge.className = 'px-2 py-1 rounded bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-[11px] text-gray-500 dark:text-gray-300';
+                badge.textContent = (item.file_extension || '').toUpperCase() || 'FILE';
+                wrap.appendChild(badge);
+                openBtn.appendChild(wrap);
             }
 
             // Overlay اسم الملف

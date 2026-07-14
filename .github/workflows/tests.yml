@@ -1,0 +1,69 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        # Only combinations that are actually supported are listed here:
+        # - Laravel 10 supports PHP 8.1, 8.2, 8.3
+        # - Laravel 11 dropped PHP 8.1 support: requires PHP 8.2+
+        # - Laravel 12 requires PHP 8.2+
+        include:
+          - php: '8.1'
+            laravel: '10.*'
+            testbench: '8.*'
+          - php: '8.2'
+            laravel: '10.*'
+            testbench: '8.*'
+          - php: '8.3'
+            laravel: '10.*'
+            testbench: '8.*'
+          - php: '8.2'
+            laravel: '11.*'
+            testbench: '9.*'
+          - php: '8.3'
+            laravel: '11.*'
+            testbench: '9.*'
+          - php: '8.2'
+            laravel: '12.*'
+            testbench: '10.*'
+          - php: '8.3'
+            laravel: '12.*'
+            testbench: '10.*'
+
+    name: PHP ${{ matrix.php }} - Laravel ${{ matrix.laravel }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: mbstring, dom, fileinfo, sqlite3, pdo_sqlite, curl, xml, ctype, json
+          coverage: none
+          tools: composer:v2
+
+      - name: Install dependencies
+        run: |
+          composer require "laravel/framework:${{ matrix.laravel }}" "orchestra/testbench:${{ matrix.testbench }}" --no-interaction --no-update
+          composer update --prefer-dist --no-interaction --no-progress
+
+      - name: Validate composer.json
+        run: composer validate --strict
+
+      - name: Run test suite
+        run: vendor/bin/phpunit
+
+      - name: Run Laravel Pint (formatting check)
+        run: vendor/bin/pint --test

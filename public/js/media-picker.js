@@ -314,29 +314,29 @@ document.addEventListener('DOMContentLoaded', () => {
                 btn.classList.add('ring-2', 'ring-indigo-500');
             }
 
-            let inner = '';
+            // Built via DOM APIs (not innerHTML) so that a malicious
+            // file_original_name / file_extension value can never be
+            // interpreted as HTML (stored XSS prevention).
             if (isImage) {
-                inner += `
-                    <img src="${imageUrl}" alt="${name}"
-                        class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200">
-                `;
+                const img = document.createElement('img');
+                img.src = imageUrl;
+                img.alt = name;
+                img.className = 'w-full h-full object-cover group-hover:scale-105 transition-transform duration-200';
+                btn.appendChild(img);
             } else {
-                inner += `
-                    <div class="w-full h-full flex items-center justify-center text-[11px] text-gray-500 dark:text-gray-300">
-                        <span class="px-2 py-1 rounded bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
-                            ${(item.file_extension || '').toUpperCase() || 'FILE'}
-                        </span>
-                    </div>
-                `;
+                const wrap = document.createElement('div');
+                wrap.className = 'w-full h-full flex items-center justify-center text-[11px] text-gray-500 dark:text-gray-300';
+                const badge = document.createElement('span');
+                badge.className = 'px-2 py-1 rounded bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700';
+                badge.textContent = (item.file_extension || '').toUpperCase() || 'FILE';
+                wrap.appendChild(badge);
+                btn.appendChild(wrap);
             }
 
-            inner += `
-                <div class="absolute inset-x-0 bottom-0 bg-black/40 text-[10px] text-white px-2 py-1 truncate">
-                    ${name}
-                </div>
-            `;
-
-            btn.innerHTML = inner;
+            const overlay = document.createElement('div');
+            overlay.className = 'absolute inset-x-0 bottom-0 bg-black/40 text-[10px] text-white px-2 py-1 truncate';
+            overlay.textContent = name;
+            btn.appendChild(overlay);
 
             // Click handler for selecting/deselecting this item
             btn.addEventListener('click', () => {

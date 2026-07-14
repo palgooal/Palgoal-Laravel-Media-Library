@@ -33,6 +33,10 @@ class MediaLibraryServiceProvider extends ServiceProvider
 
     protected function registerPolicy(): void
     {
+        if (! config('media-library.register_policy', true)) {
+            return;
+        }
+
         $policy = config('media-library.policy', Policies\MediaPolicy::class);
 
         Gate::policy(Media::class, $policy);

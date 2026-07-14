@@ -8,6 +8,25 @@ return new class extends Migration
 {
     /**
      * Run the migrations.
+     *
+     * IMPORTANT — Schema::hasTable() short-circuit:
+     * This migration silently does nothing if a `media` table already
+     * exists (e.g. created by another package, or by your own application).
+     * That check only tells you a table with this *name* exists — it does
+     * NOT verify its columns, types, nullability, or indexes match what
+     * this package expects (file_name, file_path, file_type, disk, size,
+     * uploader_id, alt/title/caption/description, etc. — see below).
+     *
+     * If you already have a `media` table from another source, this
+     * package will NOT fail loudly; it will instead run against whatever
+     * schema is actually there, and any missing/incompatible column will
+     * surface later as a runtime SQL error (e.g. "column not found") when
+     * the Model or Controller tries to read/write it. There is no
+     * automatic conflict detection here, and it would be inaccurate to
+     * claim running two media-table packages side by side is always safe
+     * — verify the existing schema yourself (`php artisan db:table media`
+     * or an equivalent inspection) before installing this package on top
+     * of a project that already has a `media` table.
      */
     public function up(): void
     {
@@ -42,7 +61,16 @@ return new class extends Migration
             $table->unsignedInteger('width')->nullable();
             $table->unsignedInteger('height')->nullable();
 
-            // Ownership / uploader
+            // Ownership / uploader.
+            //
+            // Intentionally NOT a real foreign key constraint. The
+            // uploader's table name/PK type varies per host application
+            // (config('auth.providers.users.model')), and declaring a hard
+            // FK here would tie this migration to a specific users table
+            // that may not exist yet at migration time, or may use a
+            // non-bigint primary key, breaking portability across MySQL,
+            // MariaDB, PostgreSQL, and SQLite. An indexed nullable column
+            // is used instead so lookups stay fast without that coupling.
             $table->unsignedBigInteger('uploader_id')->nullable()->index();
 
             // SEO / content fields
@@ -57,6 +85,15 @@ return new class extends Migration
 
     /**
      * Reverse the migrations.
+     *
+     * Because up() may have been a no-op (pre-existing table), down() is
+     * intentionally conservative and uses dropIfExists() rather than an
+     * unconditional drop — this avoids failing if the table was already
+     * absent, but it also means running `migrate:rollback` after this
+     * migration will drop a `media` table even if this package never
+     * created it in the first place (i.e. it existed before this package
+     * was installed). If that matters for your project, don't rely on
+     * rollback here — back up the table first.
      */
     public function down(): void
     {
