@@ -13,7 +13,7 @@
 - **Support**: `Palgoal\MediaLibrary\Support\MediaPathNormalizer` (أداة مساعدة لتحويل مسارات نصية قديمة إلى `media_id` عند الترحيل من نظام آخر)
 - **Migration**: إنشاء جدول `media`
 - **Routes**: صفحة المكتبة الكاملة + JSON API، تحت بادئة قابلة للتهيئة (افتراضياً `/media-library`)
-- **Views**: صفحة المكتبة، مكوّن الاختيار `<x-media-library::picker>`، مودال الاختيار العام، Layout بسيطة مستقلة (Tailwind عبر CDN) تعمل دون أي ثيم خارجي
+- **Views**: صفحة المكتبة (بـ Layout قابل للاستبدال ديناميكياً عبر config، افتراضياً Layout بسيطة مستقلة Tailwind عبر CDN)، مكوّن الاختيار `<x-media-library::picker>`، مودال الاختيار العام
 - **JS**: `media-library.js` (صفحة المكتبة) و `media-picker.js` (المودال القابل لإعادة الاستخدام) — كلاهما يعتمد فقط على `window.MEDIA_CONFIG`، بلا أي مسار مربوط بمشروع بعينه
 
 ## المتطلبات
@@ -105,20 +105,83 @@ php artisan storage:link
 
 أهم المفاتيح:
 
-- `route_prefix` — بادئة الروابط (افتراضياً `media-library`).
+- `route_prefix` — بادئة الروابط (افتراضياً `media-library`؛ يمكن أن تكون مساراً متعدد الأجزاء مثل `dashboard/media-library` — انظر [دمج المكتبة داخل لوحة تحكم](#دمج-المكتبة-داخل-لوحة-تحكم-dashboard)).
 - `middleware` — أضف الـ guard/الصلاحيات الخاصة بلوحتك (مثال: `['web', 'auth', 'can:access-admin']`).
 - `disk` / `directory` — أين تُخزَّن الملفات فعلياً.
 - `max_upload_size_kb`, `allowed_mimes`, `allowed_mimetypes` — قيود الرفع (**SVG غير مسموح افتراضياً**، انظر [مخاطر SVG](#مخاطر-svg)).
 - `allowed_types` — القيم المسموحة لفلتر `type` في الـ API (`image|video|audio|document|other`).
 - `user_model` — كلاس المستخدم المستخدم في علاقة `uploader()` (انظر [تخصيص User model](#تخصيص-user-model)).
 - `policy` / `register_policy` — انظر [تخصيص Policy](#تخصيص-policy).
+- `layout` / `breadcrumb` — انظر [دمج المكتبة داخل لوحة تحكم](#دمج-المكتبة-داخل-لوحة-تحكم-dashboard).
 
 ## استخدام صفحة المكتبة
 
 الرابط الافتراضي: `/media-library` (اسم الـ route: `media-library.page`).
 الـ API: `/media-library/media/*` (كل أسماء الـ routes تبدأ بـ `media-library.media.`).
 
-الصفحة الكاملة (Blade + JS) جاهزة للاستخدام مباشرة بتصميم Tailwind مستقل، ويمكنك تخصيصها بنشر الـ views وتعديلها لتستخدم Layout مشروعك الخاص.
+الصفحة الكاملة (Blade + JS) جاهزة للاستخدام مباشرة بتصميم Tailwind مستقل، ويمكنك تخصيصها بنشر الـ views وتعديلها لتستخدم Layout مشروعك الخاص، أو (أسهل، بلا نشر أي ملف) عبر `layout`/`breadcrumb` في config — انظر القسم التالي.
+
+## دمج المكتبة داخل لوحة تحكم (Dashboard)
+
+المكتبة تدعم التركيب داخل أي لوحة تحكم موجودة **بالإعدادات فقط** — بدون إضافة أي route، وبدون أي اعتماد على بنية مشروعك (لا `App\...`، ولا لوحة جاهزة كـ Filament/Nova/Voyager، ولا افتراض وجود `routes/dashboard.php`).
+
+### ١. بادئة الرابط (Route Prefix)
+
+```php
+// config/media-library.php
+'route_prefix' => 'dashboard/media-library',
+```
+
+هذا وحده كافٍ لتسجيل كل الروابط تحت `/dashboard/media-library` بدل `/media-library` — الحزمة تستخدم `Route::prefix()` القياسية في Laravel والتي تدعم مسارات متعددة الأجزاء أصلاً؛ **لا تحتاج أي route file إضافي في مشروعك**. أسماء الـ routes (`media-library.page`, `media-library.media.index`, ...) **لا تتغيّر أبداً** بتغيير هذا الإعداد، فأي `route('media-library.media.index')` في كودك يستمر بالعمل دون تعديل.
+
+### ٢. الـ Layout
+
+الصفحة الكاملة تُغلَّف بمكوّن ديناميكي (`<x-dynamic-component>`)، فيمكنك استبداله بأي Layout Component عندك يقبل `$slot` افتراضياً:
+
+```php
+// config/media-library.php
+'layout' => 'components.dashboard-layout',
+```
+
+- القيمة الافتراضية `null` تعني استخدام Layout المستقل المدمج في الحزمة (Tailwind عبر CDN)، بلا أي إعداد إضافي.
+- أي قيمة أخرى تُمرَّر مباشرة إلى `<x-dynamic-component :component="...">`، أي أنها تخضع لنفس قواعد Laravel المعتادة لتسمية الـ Components — اسم بدون `namespace::` يُبحث عنه كمكوّن anonymous تحت `resources/views/components/` (تماماً كأي `<x-...>` عادي في Laravel، وليس قاعدة خاصة بهذه الحزمة):
+
+  ```php
+  'layout' => 'dashboard-layout',        // resources/views/components/dashboard-layout.blade.php
+  'layout' => 'layouts.admin',           // resources/views/components/layouts/admin.blade.php
+  ```
+
+- **الشرط الوحيد**: أن يستقبل الـ Component سلوت افتراضي (`{{ $slot }}`) — نفس عقد أي `<x-app-layout>` معتاد في Laravel. الحزمة لا تكتب أو تعتمد على أي ملف من هذا الـ Layout؛ فقط تشير إليه بالاسم عبر config.
+
+### ٣. الـ Breadcrumb
+
+```php
+// config/media-library.php
+'breadcrumb' => [
+    ['label' => 'لوحة التحكم', 'url' => '/dashboard'],
+    ['label' => 'مكتبة الوسائط', 'url' => null],
+],
+```
+
+القيمة الافتراضية `null` تعني عدم عرض أي breadcrumb (كما كانت الحزمة سابقاً). عند ضبطها، تُعرض شريحة breadcrumb أعلى رأس الصفحة — آخر عنصر (أو أي عنصر بلا `url`) يُعرض كنص عادي بدل رابط.
+
+### مثال متكامل
+
+```php
+// config/media-library.php
+return [
+    'route_prefix' => 'dashboard/media-library',
+    'middleware'    => ['web', 'auth', 'can:access-admin'],
+    'layout'        => 'components.dashboard-layout',
+    'breadcrumb'    => [
+        ['label' => 'لوحة التحكم', 'url' => '/dashboard'],
+        ['label' => 'مكتبة الوسائط', 'url' => null],
+    ],
+    // ... باقي المفاتيح كما هي
+];
+```
+
+بهذا الإعداد وحده، صفحة المكتبة تظهر على `/dashboard/media-library`، ملفوفة بـ Layout لوحتك الخاصة، مع breadcrumb يعكس مكانها داخل التنقل — دون تعديل أي ملف داخل الحزمة نفسها.
 
 ## استخدام منتقي الوسائط (Media Picker)
 
@@ -237,6 +300,7 @@ SVG **غير مسموح افتراضياً** في `allowed_mimes` / `allowed_mim
 - **SVG لم يعد مسموحاً افتراضياً.** إن كنت تعتمد عليه، أضفه صراحة إلى `allowed_mimes`/`allowed_mimetypes` بعد التأكد من وجود تعقيم فعلي.
 - **فلتر `type` أصبح مُتحقَّقاً منه.** قيمة خارج `image|video|audio|document|other` تُعيد الآن `422` بدل نتيجة فارغة بصمت.
 - **`Media::uploader()` يرمي استثناءً** بدل الرجوع الصامت إلى `App\Models\User` إن لم تضبط `user_model`/`auth.providers.users.model`.
+- **إضافة (غير كاسرة)**: `layout` و`breadcrumb` مفتاحان جديدان في config، وكلاهما `null` افتراضياً — أي تطبيق موجود يستمر بالعمل بلا أي تغيير في السلوك أو الشكل. إن كان لديك ملف `config/media-library.php` منشور من نسخة أقدم لا يحتوي هذين المفتاحين، ستُدمَج القيم الافتراضية تلقائياً من الحزمة (`mergeConfigFrom`) بلا حاجة لإعادة النشر.
 - راجع `CHANGELOG.md` للقائمة الكاملة.
 
 ## Troubleshooting

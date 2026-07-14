@@ -8,7 +8,21 @@ return [
     |--------------------------------------------------------------------------
     |
     | The library page will be served at {prefix} and the JSON API at
-    | {prefix}/media/*. Route names are prefixed with "media-library.".
+    | {prefix}/media/*. Route names are ALWAYS prefixed with "media-library."
+    | regardless of this value (e.g. media-library.media.index) — only the
+    | URL changes, never the route names, so existing route()/URL helper
+    | calls keep working no matter what you set this to.
+    |
+    | This can be a multi-segment path, which is how you mount the package
+    | inside an existing dashboard/admin area without adding any routes
+    | file of your own:
+    |
+    |   'route_prefix' => 'dashboard/media-library',
+    |
+    | ...registers everything under /dashboard/media-library instead of
+    | /media-library. No route file, controller, or namespace inside this
+    | package needs to change for this to work — Laravel's Route::prefix()
+    | natively supports multi-segment prefixes.
     |
     */
     'route_prefix' => 'media-library',
@@ -129,21 +143,60 @@ return [
     */
     'allowed_types' => ['image', 'video', 'audio', 'document', 'other'],
 
-];
+    /*
+    |--------------------------------------------------------------------------
+    | Layout component
+    |--------------------------------------------------------------------------
+    |
+    | The full library page (resources/views/media.blade.php) renders its
+    | content inside <x-dynamic-component :component="...">, so it can be
+    | wrapped by ANY Blade component that accepts a default slot — not just
+    | the package's own layout.
+    |
+    | - null (default): the package's own minimal, self-contained layout
+    |   (media-library::layouts.minimal — a bare <html> shell with Tailwind
+    |   loaded from the CDN) is used, so the page renders correctly out of
+    |   the box with zero configuration in a brand-new project.
+    |
+    | - Any component name Laravel can resolve via <x-{name}>: point this at
+    |   your own dashboard/admin layout to make the page render as part of
+    |   your dashboard chrome (sidebar, topbar, etc.) instead of as a
+    |   standalone page. Like any <x-...> tag, an unnamespaced name is
+    |   resolved as an anonymous component under resources/views/components/
+    |   (Laravel's normal convention — this is not a package-specific rule):
+    |
+    |     'layout' => 'admin-layout',          // resources/views/components/admin-layout.blade.php
+    |     'layout' => 'layouts.dashboard',     // resources/views/components/layouts/dashboard.blade.php
+    |     'layout' => 'dashboard-layout',      // App\View\Components\DashboardLayout, if that class exists
+    |
+    |   Your layout component must accept a default slot ({{ $slot }}) —
+    |   the same contract as any typical <x-app-layout>-style component.
+    |   This package never writes to or depends on any file belonging to
+    |   that layout; it only references it by name through config.
+    |
+    */
+    'layout' => null,
 
-/*
-|--------------------------------------------------------------------------
-| Full library page layout
-|--------------------------------------------------------------------------
-|
-| resources/views/vendor/media-library/media.blade.php ships with a
-| minimal, self-contained Tailwind layout so the page works out of the box
-| in any project. To match your own admin theme, publish the views:
-|
-|   php artisan vendor:publish --tag=media-library-views
-|
-| ...then edit the published copy to wrap the content in your own
-| <x-dashboard-layout> (or whatever layout component your app uses).
-| Laravel automatically prefers the published copy over the package's.
-|
-*/
+    /*
+    |--------------------------------------------------------------------------
+    | Breadcrumb
+    |--------------------------------------------------------------------------
+    |
+    | Optional breadcrumb trail rendered above the library page's header,
+    | so the page can visually sit inside a dashboard's navigation instead
+    | of looking like an isolated, unrelated screen. Left as null (default)
+    | no breadcrumb is rendered at all.
+    |
+    | Each entry is an array with a 'label' and an optional 'url' (omit or
+    | set to null for the current/last item, which is rendered as plain
+    | text instead of a link):
+    |
+    |   'breadcrumb' => [
+    |       ['label' => 'Dashboard', 'url' => '/dashboard'],
+    |       ['label' => 'Media Library', 'url' => null],
+    |   ],
+    |
+    */
+    'breadcrumb' => null,
+
+];

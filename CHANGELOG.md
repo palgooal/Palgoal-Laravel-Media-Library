@@ -13,6 +13,32 @@ repository. No tagged release has been made yet — see the "Packagist
 readiness" section of the project's audit report for what's still
 outstanding before `v0.1.0`.
 
+### Added — Dashboard integration (non-breaking)
+
+- `config('media-library.route_prefix')` can now be a multi-segment path
+  (e.g. `dashboard/media-library`) to mount the package inside an existing
+  dashboard/admin area, using Laravel's native `Route::prefix()` support
+  for multi-segment prefixes. No route file, controller, or namespace in
+  the package changes; route *names* are unaffected (`route_prefix` only
+  changes the URL, `media-library.*` route names stay the same). The
+  service provider now also trims stray leading/trailing slashes from
+  this value defensively.
+- `config('media-library.layout')` (default `null`) — the full library
+  page now renders inside `<x-dynamic-component :component="...">`
+  instead of a hardcoded `<x-media-library::layouts.minimal>` tag. Leave
+  it `null` to keep the package's own self-contained layout, or point it
+  at any host Blade component that accepts a default slot to make the
+  page render as part of your dashboard's chrome instead of as a
+  standalone page. Resolution follows Laravel's normal `<x-...>` naming
+  rules (unnamespaced names resolve under `resources/views/components/`).
+- `config('media-library.breadcrumb')` (default `null`) — optional
+  breadcrumb trail rendered above the page header, so the page can sit
+  visually inside a dashboard's navigation. Not rendered at all unless
+  configured.
+- No new dependency on `App\...`, Filament/Nova/Voyager, or any specific
+  dashboard layout was introduced — everything above is opt-in through
+  `config/media-library.php` only.
+
 ### Security
 
 - SVG is no longer allowed by default (`allowed_mimes` / `allowed_mimetypes`

@@ -1,6 +1,41 @@
-<x-media-library::layouts.minimal>
+{{--
+    Layout is resolved dynamically so this page can render as part of a
+    host dashboard instead of as a standalone screen. Set
+    config('media-library.layout') to any component name Laravel can
+    resolve via <x-{name}> (it must accept a default slot); leave it null
+    to use the package's own self-contained layout. See
+    config/media-library.php for details — nothing in this file assumes
+    any particular host application or dashboard.
+--}}
+@php
+    $mediaLibraryLayout = config('media-library.layout') ?: 'media-library::layouts.minimal';
+    $mediaLibraryBreadcrumb = config('media-library.breadcrumb');
+@endphp
+<x-dynamic-component :component="$mediaLibraryLayout">
 
-    <div class="min-h-screen bg-gray-50 dark:bg-gray-950 px-4 py-6">
+    <div class="px-4 py-6">
+
+        @if (! empty($mediaLibraryBreadcrumb))
+            {{-- Breadcrumb: only rendered when config('media-library.breadcrumb') is set,
+                 so the page can visually sit inside a dashboard's navigation instead of
+                 looking like an isolated, unrelated screen. --}}
+            <nav aria-label="Breadcrumb" class="mb-4">
+                <ol class="flex flex-wrap items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+                    @foreach ($mediaLibraryBreadcrumb as $crumb)
+                        <li class="flex items-center gap-1.5">
+                            @if (! $loop->first)
+                                <span aria-hidden="true">/</span>
+                            @endif
+                            @if (! empty($crumb['url']) && ! $loop->last)
+                                <a href="{{ $crumb['url'] }}" class="hover:text-indigo-600 dark:hover:text-indigo-400">{{ $crumb['label'] }}</a>
+                            @else
+                                <span class="text-gray-700 dark:text-gray-200 font-medium" @if ($loop->last) aria-current="page" @endif>{{ $crumb['label'] }}</span>
+                            @endif
+                        </li>
+                    @endforeach
+                </ol>
+            </nav>
+        @endif
 
         {{-- Header --}}
         <header class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -205,4 +240,4 @@
     </script>
     <script src="{{ asset('vendor/media-library/js/media-library.js') }}" defer></script>
 
-</x-media-library::layouts.minimal>
+</x-dynamic-component>

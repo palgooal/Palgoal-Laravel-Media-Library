@@ -23,9 +23,21 @@ class MediaLibraryServiceProvider extends ServiceProvider
         $this->registerPublishing();
     }
 
+    /**
+     * Register the package's routes under the configured prefix.
+     *
+     * config('media-library.route_prefix') may be a multi-segment path
+     * (e.g. "dashboard/media-library") to mount the package inside an
+     * existing dashboard/admin area — Laravel's Route::prefix() natively
+     * supports that, no route file of the host application is touched.
+     * Route NAMES are always "media-library.*" regardless of the prefix,
+     * so route()/URL helper calls never need to change.
+     */
     protected function registerRoutes(): void
     {
-        Route::prefix(config('media-library.route_prefix', 'media-library'))
+        $prefix = trim((string) config('media-library.route_prefix', 'media-library'), '/');
+
+        Route::prefix($prefix)
             ->middleware(config('media-library.middleware', ['web', 'auth']))
             ->name('media-library.')
             ->group(__DIR__ . '/../routes/media-library.php');
