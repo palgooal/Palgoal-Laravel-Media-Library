@@ -19,11 +19,31 @@
 
 ## المتطلبات
 
-| المتطلب | الإصدار |
+| Laravel | PHP |
 |---|---|
-| PHP | ‎8.1 فأعلى |
-| Laravel | 10.x أو 11.x أو 12.x |
-| قاعدة بيانات | MySQL / MariaDB / PostgreSQL / SQLite (انظر ملاحظات التوافق أدناه) |
+| 10.x | 8.1+ |
+| 11.x | 8.2+ |
+| 12.x | 8.2+ |
+
+قاعدة البيانات: MySQL / MariaDB / PostgreSQL / SQLite (انظر ملاحظات التوافق أدناه).
+
+## Quick Start
+
+لتجربة الحزمة خلال دقيقة واحدة:
+
+```bash
+composer require palgoal/media-library
+php artisan vendor:publish --tag=media-library-config
+php artisan vendor:publish --tag=media-library-assets
+php artisan migrate
+php artisan storage:link
+```
+
+ثم افتح:
+
+```
+/media-library
+```
 
 ## التثبيت
 
@@ -66,11 +86,14 @@ composer update palgoal/media-library
     "repositories": [
         {
             "type": "path",
-            "url": "../path/to/Palgoal-Laravel-Media-Library"
+            "url": "../path/to/Palgoal-Laravel-Media-Library",
+            "options": {
+                "symlink": true
+            }
         }
     ],
     "require": {
-        "palgoal/media-library": "*"
+        "palgoal/media-library": "dev-main"
     }
 }
 ```
@@ -144,7 +167,7 @@ php artisan storage:link
 
 ```php
 // config/media-library.php
-'layout' => 'components.dashboard-layout',
+'layout' => 'dashboard-layout',
 ```
 
 - القيمة الافتراضية `null` تعني استخدام Layout المستقل المدمج في الحزمة (Tailwind عبر CDN)، بلا أي إعداد إضافي.
@@ -176,7 +199,7 @@ php artisan storage:link
 return [
     'route_prefix' => 'dashboard/media-library',
     'middleware'    => ['web', 'auth', 'can:access-admin'],
-    'layout'        => 'components.dashboard-layout',
+    'layout'        => 'dashboard-layout',
     'breadcrumb'    => [
         ['label' => 'لوحة التحكم', 'url' => '/dashboard'],
         ['label' => 'مكتبة الوسائط', 'url' => null],
@@ -186,6 +209,23 @@ return [
 ```
 
 بهذا الإعداد وحده، صفحة المكتبة تظهر على `/dashboard/media-library`، ملفوفة بـ Layout لوحتك الخاصة، مع breadcrumb يعكس مكانها داخل التنقل — دون تعديل أي ملف داخل الحزمة نفسها.
+
+### مثال: مشروع يستخدم Guard مختلفاً (Multi Guard)
+
+مشاريع كثيرة لا تستخدم guard `web` الافتراضي للوحة التحكم، بل guard مخصصاً مثل `admin`. اضبط `middleware` و`user_model` ليطابقا نفس الـ guard الذي تسجّل الدخول عبره لوحتك:
+
+```php
+// config/media-library.php
+'route_prefix' => 'dashboard/media-library',
+'middleware' => [
+    'web',
+    'auth:admin',
+],
+'user_model' => \App\Models\Admin::class,
+'layout' => 'dashboard-layout',
+```
+
+> استخدم نفس Guard الذي تستخدمه لوحة التحكم لديك. استخدام `auth` فقط يعني استخدام الـ Guard الافتراضي (غالباً `web`).
 
 ## استخدام منتقي الوسائط (Media Picker)
 
@@ -198,15 +238,15 @@ return [
 ### Single Picker
 
 ```blade
-<x-media-library::picker name="logo" label="الشعار" />
+<x-media-library::picker name="logo_media_id" label="الشعار" />
 ```
 
-يُنشئ حقل `<input type="hidden" name="logo">` يحمل `id` العنصر المختار من جدول `media`، بالإضافة إلى زر يفتح المودال ومعاينة مصغّرة.
+يُنشئ حقل `<input type="hidden" name="logo_media_id">` يحمل `id` العنصر المختار من جدول `media`، بالإضافة إلى زر يفتح المودال ومعاينة مصغّرة.
 
 ### Multiple Picker
 
 ```blade
-<x-media-library::picker name="gallery" :multiple="true" label="معرض الصور" />
+<x-media-library::picker name="gallery_media_ids" :multiple="true" label="معرض الصور" />
 ```
 
 القيمة المخزَّنة في الحقل المخفي تكون IDs مفصولة بفواصل (`1,5,9`).
@@ -218,6 +258,8 @@ return [
 ```blade
 <x-media-library::picker name="cover_url" :multiple="false" store-value="url" />
 ```
+
+> يوصى باستخدام `storeValue="id"` وربط الوسائط باستخدام `media.id` أو Trait `HasMedia`. لا يُنصح بحفظ URL أو `file_path` كمراجع دائمة داخل قاعدة البيانات لأنهما قد يتغيران عند تغيير الـ Storage أو الـ Disk.
 
 ### الأحداث القابلة للربط في JS
 
@@ -236,6 +278,12 @@ window.addEventListener('media-picker-confirmed', (e) => {
 
 `Palgoal\MediaLibrary\Concerns\HasMedia` يتيح لأي Model في مشروعك (منتج، مستخدم، شركة...) أن يمتلك وسائط منظّمة في Collections مسمّاة (`logo`, `cover`, `gallery`, `documents`, ...) عبر جدول pivot عام واحد (`mediables`)، دون أي جدول أو migration خاص بكل Model، ودون أي تغيير في سلوك الحزمة أو الـ Picker الحاليين.
 
+> يجب أولاً نشر وتشغيل Migration الخاصة بـ `mediables`، وإلا ستفشل العلاقة بخطأ SQL:
+> ```bash
+> php artisan vendor:publish --tag=media-library-relations-migration
+> php artisan migrate
+> ```
+
 ```php
 use Palgoal\MediaLibrary\Concerns\HasMedia;
 
@@ -249,6 +297,49 @@ $product->firstMediaUrl('cover', asset('images/placeholder.png'));
 ```
 
 يتطلب migration اختيارية منفصلة (`php artisan vendor:publish --tag=media-library-relations-migration && php artisan migrate`). الدليل الكامل بكل الأمثلة (صورة مفردة، معرض صور، شعار شركة، صورة مستخدم، مستندات، Soft Delete، Morph Map، الترتيب، وأكثر) في [`docs/HAS-MEDIA.md`](docs/HAS-MEDIA.md).
+
+### دورة حياة العلاقات
+
+- حذف عنصر Media يحذف تلقائياً كل روابطه في `mediables` (لا يترك رابطاً يتيماً).
+- حذف الرابط (`detachMedia`/`syncMedia`) لا يحذف ملف Media نفسه أو سجله من جدول `media`.
+- `clearMediaCollection()` يحذف روابط الـ Collection فقط، وليس أي ملف.
+- Soft Delete على الموديل المضيف يحتفظ بروابطه (قابلة للعودة عند `restore()`).
+- Force Delete ينظّف روابط الموديل المضيف فعلياً.
+
+### مثال: ربط الـ Picker مباشرة بـ `HasMedia`
+
+```blade
+<x-media-library::picker
+    name="gallery_media_ids"
+    label="معرض الصور"
+    :multiple="true"
+    :value="$product->mediaCollection('gallery')->pluck('id')->all()"
+    :preview-urls="$product->mediaCollection('gallery')->pluck('url')->filter()->all()"
+/>
+```
+
+```php
+use Palgoal\MediaLibrary\Support\MediaSelection;
+
+$mediaIds = MediaSelection::parse(
+    $request->input('gallery_media_ids')
+);
+
+validator(
+    ['gallery_media_ids' => $mediaIds],
+    [
+        'gallery_media_ids' => ['array'],
+        'gallery_media_ids.*' => [
+            'integer',
+            Rule::exists('media', 'id'),
+        ],
+    ]
+)->validate();
+
+$product->syncMedia($mediaIds, 'gallery');
+```
+
+مثال مختصر فقط — التفاصيل الكاملة والأمثلة الإضافية في [`docs/HAS-MEDIA.md`](docs/HAS-MEDIA.md).
 
 ## تخصيص Policy
 
@@ -344,7 +435,9 @@ SVG **غير مسموح افتراضياً** في `allowed_mimes` / `allowed_mim
 
 ## Security considerations
 
-راجع `SECURITY.md` للتفاصيل الكاملة، وأبرزها: SVG معطّل افتراضياً، الـ Policy الافتراضية غير مخصَّصة للمستخدمين غير الموثوقين، التحقق من الملفات يعتمد على `mimes` + `mimetypes` معاً (فحص المحتوى الفعلي وليس اسم الملف/الـ Content-Type القادم من المتصفح فقط)، ولا يوجد Foreign Key على `uploader_id` لأسباب تتعلق بقابلية النقل بين قواعد البيانات.
+راجع `SECURITY.md` للتفاصيل الكاملة، وأبرزها: SVG معطّل افتراضياً، الـ Policy الافتراضية غير مخصَّصة للمستخدمين غير الموثوقين، ولا يوجد Foreign Key على `uploader_id` لأسباب تتعلق بقابلية النقل بين قواعد البيانات.
+
+> تعتمد الحزمة على آليات Laravel للتحقق من نوع الملف (MIME detection)، لكنها لا تقوم بتعقيم محتوى الملفات، لذلك يبقى SVG معطلاً افتراضياً حتى إضافة Sanitizer مناسب.
 
 ## الاختبارات
 
