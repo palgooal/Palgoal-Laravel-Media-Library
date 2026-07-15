@@ -5,6 +5,7 @@ namespace Palgoal\MediaLibrary\Tests;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Orchestra\Testbench\TestCase as Orchestra;
 use Palgoal\MediaLibrary\MediaLibraryServiceProvider;
+use Palgoal\MediaLibrary\Models\Media;
 use Palgoal\MediaLibrary\Tests\Support\User;
 
 abstract class TestCase extends Orchestra
@@ -57,6 +58,15 @@ abstract class TestCase extends Orchestra
     {
         $this->loadMigrationsFrom(__DIR__ . '/../database/migrations');
         $this->loadMigrationsFrom(__DIR__ . '/Support/migrations');
+
+        // The `mediables` table is NOT auto-loaded in real installs (see
+        // MediaLibraryServiceProvider::boot() — it's published on demand
+        // via the 'media-library-relations-migration' tag instead). It IS
+        // loaded here for every test, purely as a test-fixture
+        // convenience so HasMedia-related tests don't need their own
+        // bespoke bootstrapping; this does not change, and is not
+        // evidence of, the package's real auto-load behavior.
+        $this->loadMigrationsFrom(__DIR__ . '/../database/optional-migrations');
     }
 
     protected function actingAsUser(): User
@@ -70,5 +80,20 @@ abstract class TestCase extends Orchestra
         $this->actingAs($user);
 
         return $user;
+    }
+
+    /**
+     * Create a minimal, valid Media row for tests that don't care about
+     * upload mechanics — only that a real `media` record exists to
+     * attach/detach/sync against.
+     */
+    protected function createMedia(array $attributes = []): Media
+    {
+        return Media::create(array_merge([
+            'file_name' => 'file-' . uniqid() . '.png',
+            'file_path' => 'media/file-' . uniqid() . '.png',
+            'file_type' => 'image',
+            'disk'      => 'public',
+        ], $attributes));
     }
 }

@@ -38,4 +38,26 @@ class PublishingTest extends TestCase
         $published = File::glob(database_path('migrations') . '/*_create_media_table.php');
         $this->assertNotEmpty($published, 'Expected the media table migration to be published.');
     }
+
+    /**
+     * The `mediables` relations migration is published under its OWN,
+     * separate tag ('media-library-relations-migration') — never bundled
+     * into 'media-library-migrations' above, and never auto-loaded (see
+     * MediaLibraryRelationsNotAutoloadedTest).
+     */
+    public function test_relations_migration_can_be_published_under_its_own_tag(): void
+    {
+        Artisan::call('vendor:publish', ['--tag' => 'media-library-relations-migration', '--force' => true]);
+
+        $this->assertFileExists(database_path('migrations/2025_06_12_000001_create_mediables_table.php'));
+    }
+
+    public function test_publishing_the_relations_migration_twice_does_not_create_a_duplicate_file(): void
+    {
+        Artisan::call('vendor:publish', ['--tag' => 'media-library-relations-migration', '--force' => true]);
+        Artisan::call('vendor:publish', ['--tag' => 'media-library-relations-migration', '--force' => true]);
+
+        $published = File::glob(database_path('migrations') . '/*_create_mediables_table.php');
+        $this->assertCount(1, $published, 'Republishing must overwrite the same file, not create a second one.');
+    }
 }

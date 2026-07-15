@@ -12,6 +12,7 @@
 - **Policy**: `Palgoal\MediaLibrary\Policies\MediaPolicy` (قابلة للاستبدال بالكامل)
 - **Support**: `Palgoal\MediaLibrary\Support\MediaPathNormalizer` (أداة مساعدة لتحويل مسارات نصية قديمة إلى `media_id` عند الترحيل من نظام آخر)
 - **Migration**: إنشاء جدول `media`
+- **Concerns**: `Palgoal\MediaLibrary\Concerns\HasMedia` — Trait اختياري لربط الوسائط بأي Model (منتج، مستخدم، شركة...) عبر جدول pivot عام `mediables`، بدون أي تغيير على سلوك الحزمة الحالي. التفاصيل الكاملة والأمثلة في [`docs/HAS-MEDIA.md`](docs/HAS-MEDIA.md)
 - **Routes**: صفحة المكتبة الكاملة + JSON API، تحت بادئة قابلة للتهيئة (افتراضياً `/media-library`)
 - **Views**: صفحة المكتبة (بـ Layout قابل للاستبدال ديناميكياً عبر config، افتراضياً Layout بسيطة مستقلة Tailwind عبر CDN)، مكوّن الاختيار `<x-media-library::picker>`، مودال الاختيار العام
 - **JS**: `media-library.js` (صفحة المكتبة) و `media-picker.js` (المودال القابل لإعادة الاستخدام) — كلاهما يعتمد فقط على `window.MEDIA_CONFIG`، بلا أي مسار مربوط بمشروع بعينه
@@ -85,9 +86,12 @@ php artisan vendor:publish --tag=media-library-config      # config/media-librar
 php artisan vendor:publish --tag=media-library-assets      # public/vendor/media-library/js/*
 php artisan vendor:publish --tag=media-library-views        # اختياري، لتخصيص الشكل
 php artisan vendor:publish --tag=media-library-migrations   # اختياري، إذا أردت تعديل الـ migration نفسها
+php artisan vendor:publish --tag=media-library-relations-migration  # اختياري، فقط إذا ستستخدم HasMedia — انظر docs/HAS-MEDIA.md
 ```
 
 إذا لم تنشر `media-library-migrations`، ستُحمَّل الـ migration تلقائياً من داخل الحزمة عند تشغيل `migrate` — لا حاجة لنسخها يدوياً في الحالة العادية.
+
+**ملاحظة:** بعكس migration جدول `media` (تلقائية دائماً)، وسم `media-library-relations-migration` هو الوحيد الذي **لا** يُحمَّل تلقائياً إطلاقاً — يجب نشره صراحةً قبل `php artisan migrate` إن أردت استخدام ربط الوسائط بالموديلات (`Concerns\HasMedia`). راجع [`docs/HAS-MEDIA.md`](docs/HAS-MEDIA.md).
 
 ### ٢. شغّل الـ migration
 
@@ -227,6 +231,24 @@ window.addEventListener('media-picker-confirmed', (e) => {
     console.log(e.detail.items);
 });
 ```
+
+## ربط الوسائط بأي Model (اختياري)
+
+`Palgoal\MediaLibrary\Concerns\HasMedia` يتيح لأي Model في مشروعك (منتج، مستخدم، شركة...) أن يمتلك وسائط منظّمة في Collections مسمّاة (`logo`, `cover`, `gallery`, `documents`, ...) عبر جدول pivot عام واحد (`mediables`)، دون أي جدول أو migration خاص بكل Model، ودون أي تغيير في سلوك الحزمة أو الـ Picker الحاليين.
+
+```php
+use Palgoal\MediaLibrary\Concerns\HasMedia;
+
+class Product extends Model
+{
+    use HasMedia;
+}
+
+$product->attachMedia($mediaId, 'gallery');
+$product->firstMediaUrl('cover', asset('images/placeholder.png'));
+```
+
+يتطلب migration اختيارية منفصلة (`php artisan vendor:publish --tag=media-library-relations-migration && php artisan migrate`). الدليل الكامل بكل الأمثلة (صورة مفردة، معرض صور، شعار شركة، صورة مستخدم، مستندات، Soft Delete، Morph Map، الترتيب، وأكثر) في [`docs/HAS-MEDIA.md`](docs/HAS-MEDIA.md).
 
 ## تخصيص Policy
 

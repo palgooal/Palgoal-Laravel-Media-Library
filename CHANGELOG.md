@@ -13,6 +13,46 @@ repository. No tagged release has been made yet — see the "Packagist
 readiness" section of the project's audit report for what's still
 outstanding before `v0.1.0`.
 
+### Added — Attach media to any host model (non-breaking, opt-in; planned for v0.2.0)
+
+- `Palgoal\MediaLibrary\Concerns\HasMedia` — an opt-in trait any Eloquent
+  model can `use` to attach media from the shared library into named
+  collections (`logo`, `cover`, `gallery`, `documents`, ... — free-form
+  strings, nothing enumerated or hardcoded). Public API: `media()`,
+  `mediaCollection()`, `firstMedia()`, `firstMediaUrl()`, `attachMedia()`,
+  `syncMedia()`, `detachMedia()`, `clearMediaCollection()`, `hasMedia()`.
+  Implemented as a polymorphic `MorphToMany` over a new `mediables` pivot
+  table — see docs/HAS-MEDIA.md for the full rationale, API reference,
+  and end-to-end examples (single image, gallery, company logo, user
+  avatar, documents, attachments, reordering, reusing one media item
+  across models, morph maps, soft deletes, validation, and the Picker).
+- New OPTIONAL migration creating `mediables` (`media_id` FK
+  `cascadeOnDelete()`, `morphs('mediable')`, `collection`, `sort_order`,
+  timestamps, a unique index preventing duplicate (media, model,
+  collection) attachments, and a composite index for collection/order
+  lookups). Published under its own tag,
+  `media-library-relations-migration` — deliberately NOT included in
+  `media-library-migrations` and NOT loaded via `loadMigrationsFrom()`,
+  so no existing installation gains this table without an explicit
+  `vendor:publish` + `migrate`.
+- `Palgoal\MediaLibrary\Support\MediaSelection::parse()` — a pure,
+  database-free helper that normalizes a Picker value (comma-separated
+  string, array of mixed ints/numeric strings, single int, or null) into
+  a deduplicated array of positive integer IDs, preserving first-seen
+  order.
+- Automatic `mediables` cleanup on model deletion, `SoftDeletes`-aware:
+  a real `delete()` (or `forceDelete()`) removes the model's `mediables`
+  rows; a *soft* delete does not, and `restore()` needs no special
+  handling since nothing was removed in the first place.
+- No new dependency: implemented entirely with Eloquent's built-in
+  `MorphToMany` (already part of `illuminate/database`, already
+  required). No Spatie Media Library, Intervention, Filament, Nova, or
+  Voyager involved anywhere.
+- Zero changes to: the `media` table/migration, the `Media` model, the
+  Picker (Blade component, modal partial, or JS), route names, or the
+  package namespace. A project not using `HasMedia` is entirely
+  unaffected — see the "Breaking changes" note below (there are none).
+
 ### Added — Dashboard integration (non-breaking)
 
 - `config('media-library.route_prefix')` can now be a multi-segment path

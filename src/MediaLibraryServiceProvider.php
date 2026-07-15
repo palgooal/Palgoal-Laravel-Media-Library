@@ -2,6 +2,7 @@
 
 namespace Palgoal\MediaLibrary;
 
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
@@ -18,6 +19,18 @@ class MediaLibraryServiceProvider extends ServiceProvider
     {
         $this->loadMigrationsFrom(__DIR__ . '/../database/migrations');
         $this->loadViewsFrom(__DIR__ . '/../resources/views', 'media-library');
+
+        // loadViewsFrom() only registers the "media-library::" VIEW namespace
+        // (enough for view('media-library::x') / @include). It does NOT make
+        // <x-media-library::x> or <x-dynamic-component :component="'media-library::x'">
+        // resolve, because Blade's component-tag compiler resolves tag/component
+        // names through a separate registry (anonymous component paths), not
+        // through the view-namespace hints. Without this line, any package view
+        // that uses <x-dynamic-component> to render "media-library::layouts.minimal"
+        // (or any other media-library:: component) throws:
+        // "Unable to locate a class or view for component [media-library::...]".
+        Blade::anonymousComponentPath(__DIR__ . '/../resources/views', 'media-library');
+
         $this->registerRoutes();
         $this->registerPolicy();
         $this->registerPublishing();
@@ -67,6 +80,20 @@ class MediaLibraryServiceProvider extends ServiceProvider
         $this->publishes([
             __DIR__ . '/../database/migrations' => database_path('migrations'),
         ], 'media-library-migrations');
+
+        // Deliberately NOT covered by loadMigrationsFrom() (see boot()) and
+        // NOT part of the 'media-library-migrations' tag above - attaching
+        // media to host models via Concerns\HasMedia is an optional
+        // feature on top of the base package, so the mediables table is
+        // opt-in via its own tag instead of appearing automatically for
+        // every install. The published filename is fixed (not generated
+        // at publish time), so running this publish command more than
+        // once always overwrites the same target file instead of creating
+        // duplicate migrations with different timestamps.
+        $this->publishes([
+            __DIR__ . '/../database/optional-migrations/2025_06_12_000001_create_mediables_table.php'
+                => database_path('migrations/2025_06_12_000001_create_mediables_table.php'),
+        ], 'media-library-relations-migration');
 
         $this->publishes([
             __DIR__ . '/../public' => public_path('vendor/media-library'),
